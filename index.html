@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Timer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2d3436;
+            --secondary: #636e72;
+            --accent: #fd79a8;
+            --success: #00b894;
+            --warning: #fdcb6e;
+            --background: #f8f9fa;
+            --surface: #ffffff;
+            --text-primary: #2d3436;
+            --text-secondary: #636e72;
+            --shadow: rgba(45, 52, 54, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(-30px, 30px) rotate(180deg); }
+        }
+
+        .container {
+            background: var(--surface);
+            border-radius: 32px;
+            padding: 48px 40px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+            max-width: 440px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .title {
+            font-family: 'Space Mono', monospace;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 300;
+            letter-spacing: 0.5px;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 40px;
+            background: var(--background);
+            padding: 6px;
+            border-radius: 16px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: 'Archivo', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .mode-btn.active {
+            background: var(--surface);
+            color: var(--primary);
+            box-shadow: 0 4px 12px var(--shadow);
+            transform: translateY(-1px);
+        }
+
+        .timer-circle {
+            width: 280px;
+            height: 280px;
+            margin: 0 auto 40px;
+            position: relative;
+        }
+
+        .progress-ring {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+
+        .progress-ring__circle {
+            stroke: var(--background);
+            stroke-width: 8;
+            fill: none;
+        }
+
+        .progress-ring__progress {
+            stroke: var(--accent);
+            stroke-width: 8;
+            fill: none;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+            filter: drop-shadow(0 0 8px rgba(253, 121, 168, 0.4));
+        }
+
+        .timer-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .time {
+            font-family: 'Space Mono', monospace;
+            font-size: 64px;
+            font-weight: 700;
+            color: var(--primary);
+            line-height: 1;
+            margin-bottom: 8px;
+            letter-spacing: -2px;
+        }
+
+        .session-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-bottom: 32px;
+        }
+
+        .control-btn {
+            width: 64px;
+            height: 64px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .control-btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .play-pause-btn {
+            background: linear-gradient(135deg, var(--accent), #e84393);
+            color: white;
+            box-shadow: 0 8px 24px rgba(253, 121, 168, 0.4);
+            width: 80px;
+            height: 80px;
+            font-size: 32px;
+        }
+
+        .play-pause-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 32px rgba(253, 121, 168, 0.5);
+        }
+
+        .reset-btn {
+            background: var(--background);
+            color: var(--text-secondary);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .reset-btn:hover {
+            background: var(--secondary);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+            background: var(--background);
+            border-radius: 16px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--surface);
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px var(--shadow);
+            display: none;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+
+        .notification.show {
+            display: flex;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification-icon {
+            font-size: 24px;
+        }
+
+        .notification-text {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 32px 24px;
+            }
+
+            .timer-circle {
+                width: 240px;
+                height: 240px;
+            }
+
+            .time {
+                font-size: 52px;
+            }
+
+            .title {
+                font-size: 24px;
+            }
+        }
+
+        /* 点滅アニメーション */
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        .time.pulsing {
+            animation: pulse 1s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">Pomodoro</h1>
+            <p class="subtitle">集中力を高める時間管理術</p>
+        </div>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" data-mode="work">作業</button>
+            <button class="mode-btn" data-mode="short">短休憩</button>
+            <button class="mode-btn" data-mode="long">長休憩</button>
+        </div>
+
+        <div class="timer-circle">
+            <svg class="progress-ring" width="280" height="280">
+                <circle
+                    class="progress-ring__circle"
+                    stroke-width="8"
+                    fill="transparent"
+                    r="132"
+                    cx="140"
+                    cy="140"
+                />
+                <circle
+                    class="progress-ring__progress"
+                    stroke-width="8"
+                    fill="transparent"
+                    r="132"
+                    cx="140"
+                    cy="140"
+                    style="stroke-dasharray: 829.38; stroke-dashoffset: 0;"
+                />
+            </svg>
+            <div class="timer-display">
+                <div class="time">25:00</div>
+                <div class="session-label">集中タイム</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="control-btn reset-btn" id="resetBtn">↻</button>
+            <button class="control-btn play-pause-btn" id="playPauseBtn">▶</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="completedSessions">0</div>
+                <div class="stat-label">完了</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="currentRound">1</div>
+                <div class="stat-label">ラウンド</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="totalTime">0</div>
+                <div class="stat-label">分</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification">
+        <span class="notification-icon">🎉</span>
+        <span class="notification-text"></span>
+    </div>
+
+    <script>
+        class PomodoroTimer {
+            constructor() {
+                this.modes = {
+                    work: { duration: 25 * 60, label: '集中タイム', color: '#fd79a8' },
+                    short: { duration: 5 * 60, label: '短休憩', color: '#00b894' },
+                    long: { duration: 15 * 60, label: '長休憩', color: '#fdcb6e' }
+                };
+                
+                this.currentMode = 'work';
+                this.timeLeft = this.modes[this.currentMode].duration;
+                this.isRunning = false;
+                this.interval = null;
+                this.completedSessions = 0;
+                this.currentRound = 1;
+                this.totalMinutes = 0;
+                
+                this.initElements();
+                this.initEventListeners();
+                this.updateDisplay();
+            }
+
+            initElements() {
+                this.timeDisplay = document.querySelector('.time');
+                this.sessionLabel = document.querySelector('.session-label');
+                this.playPauseBtn = document.getElementById('playPauseBtn');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.modeButtons = document.querySelectorAll('.mode-btn');
+                this.progressCircle = document.querySelector('.progress-ring__progress');
+                this.completedSessionsDisplay = document.getElementById('completedSessions');
+                this.currentRoundDisplay = document.getElementById('currentRound');
+                this.totalTimeDisplay = document.getElementById('totalTime');
+                this.notification = document.getElementById('notification');
+                
+                this.circumference = 2 * Math.PI * 132;
+                this.progressCircle.style.strokeDasharray = `${this.circumference} ${this.circumference}`;
+            }
+
+            initEventListeners() {
+                this.playPauseBtn.addEventListener('click', () => this.toggleTimer());
+                this.resetBtn.addEventListener('click', () => this.reset());
+                
+                this.modeButtons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const mode = btn.dataset.mode;
+                        this.switchMode(mode);
+                    });
+                });
+            }
+
+            toggleTimer() {
+                this.isRunning = !this.isRunning;
+                
+                if (this.isRunning) {
+                    this.playPauseBtn.innerHTML = '⏸';
+                    this.timeDisplay.classList.remove('pulsing');
+                    this.start();
+                } else {
+                    this.playPauseBtn.innerHTML = '▶';
+                    this.pause();
+                }
+            }
+
+            start() {
+                this.interval = setInterval(() => {
+                    this.timeLeft--;
+                    this.updateDisplay();
+                    
+                    if (this.timeLeft <= 0) {
+                        this.complete();
+                    }
+                }, 1000);
+            }
+
+            pause() {
+                clearInterval(this.interval);
+            }
+
+            reset() {
+                this.pause();
+                this.isRunning = false;
+                this.timeLeft = this.modes[this.currentMode].duration;
+                this.playPauseBtn.innerHTML = '▶';
+                this.timeDisplay.classList.remove('pulsing');
+                this.updateDisplay();
+            }
+
+            complete() {
+                this.pause();
+                this.isRunning = false;
+                
+                if (this.currentMode === 'work') {
+                    this.completedSessions++;
+                    this.totalMinutes += 25;
+                    this.completedSessionsDisplay.textContent = this.completedSessions;
+                    this.totalTimeDisplay.textContent = this.totalMinutes;
+                    
+                    if (this.completedSessions % 4 === 0) {
+                        this.showNotification('素晴らしい!長休憩の時間です 🎉');
+                        this.switchMode('long');
+                    } else {
+                        this.showNotification('お疲れ様!休憩しましょう ☕');
+                        this.switchMode('short');
+                    }
+                } else {
+                    if (this.currentMode === 'short') {
+                        this.totalMinutes += 5;
+                    } else {
+                        this.totalMinutes += 15;
+                        this.currentRound++;
+                        this.currentRoundDisplay.textContent = this.currentRound;
+                    }
+                    this.totalTimeDisplay.textContent = this.totalMinutes;
+                    this.showNotification('さあ、次のセッション!💪');
+                    this.switchMode('work');
+                }
+                
+                this.playPauseBtn.innerHTML = '▶';
+                this.timeDisplay.classList.add('pulsing');
+                
+                // 音声通知（ブラウザのビープ音）
+                this.playSound();
+            }
+
+            switchMode(mode) {
+                this.currentMode = mode;
+                this.timeLeft = this.modes[mode].duration;
+                this.sessionLabel.textContent = this.modes[mode].label;
+                this.progressCircle.style.stroke = this.modes[mode].color;
+                this.progressCircle.style.filter = `drop-shadow(0 0 8px ${this.modes[mode].color}80)`;
+                
+                this.modeButtons.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.mode === mode);
+                });
+                
+                if (this.isRunning) {
+                    this.pause();
+                    this.isRunning = false;
+                    this.playPauseBtn.innerHTML = '▶';
+                }
+                
+                this.updateDisplay();
+            }
+
+            updateDisplay() {
+                const minutes = Math.floor(this.timeLeft / 60);
+                const seconds = this.timeLeft % 60;
+                this.timeDisplay.textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                const totalDuration = this.modes[this.currentMode].duration;
+                const progress = (totalDuration - this.timeLeft) / totalDuration;
+                const offset = this.circumference - (progress * this.circumference);
+                this.progressCircle.style.strokeDashoffset = offset;
+            }
+
+            showNotification(message) {
+                const notificationText = this.notification.querySelector('.notification-text');
+                notificationText.textContent = message;
+                this.notification.classList.add('show');
+                
+                setTimeout(() => {
+                    this.notification.classList.remove('show');
+                }, 3000);
+            }
+
+            playSound() {
+                // Web Audio APIを使用して簡単なビープ音を生成
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.frequency.value = 800;
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                } catch (e) {
+                    console.log('Audio not supported');
+                }
+            }
+        }
+
+        // タイマーの初期化
+        const timer = new PomodoroTimer();
+    </script>
+</body>
+</html>
